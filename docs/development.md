@@ -70,7 +70,7 @@ Consulte os READMEs dos respectivos pacotes para detalhes. Os testes web usam `u
 
 ## Publicação do repositório
 
-A raiz deste checkout deve ser a raiz do novo repositório. Preserve `LICENSE`, `SPEKTRAFILM_LICENSE.txt`, atribuições dos ativos e `CITATION.cff`. O nome sugerido é `spektrafilm-web`.
+A raiz deste checkout deve ser a raiz do novo repositório. Preserve `LICENSE`, `SPEKTRAFILM_LICENSE.txt`, atribuições dos ativos e `CITATION.cff`. O destino escolhido é `emnovais/spektrafilme-web` no GitHub. O comando da aplicação continua sendo `spektrafilm-web`.
 
 O README principal descreve a camada web; `README.upstream.md` preserva o conteúdo recebido do projeto original. Este checkout não veio com histórico Git: uma inicialização local cria uma nova linha de histórico e não equivale a um fork criado no GitHub. Caso seja necessário preservar a relação de fork e o histórico upstream, use um clone/fork do repositório original como base antes de importar as alterações web.
 
