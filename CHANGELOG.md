@@ -4,6 +4,13 @@ Este arquivo registra as mudanças locais sobre a cópia do Spektrafilm 0.3.3. A
 
 ## Não lançado
 
+### Limpeza integral do histórico
+
+- Histórico sanitizado desde o primeiro commit, mantendo a topologia de commits e merges.
+- Caminhos locais do exemplo e dos metadados TIFF removidos também das versões antigas.
+- Identidade dos commits do responsável pela interface normalizada para usuário público e e-mail GitHub `noreply`.
+- Conteúdo funcional atual preservado durante a reescrita.
+
 ### Limpeza para publicação
 
 - Remoção de arquivos de metadados do macOS do checkout e novas exclusões no `.gitignore`.
