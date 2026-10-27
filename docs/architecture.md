@@ -40,9 +40,27 @@ O frontend não exige bundler, framework ou instalação de pacotes JavaScript. 
 
 ## Concorrência e estado
 
-Um lock protege a admissão de novas simulações: se houver um job em execução, outro render recebe HTTP 409. Os estados do job são `running`, `done` e `error`.
+Um lock protege a admissão de novas simulações: se houver um job de renderização em execução, outro render recebe HTTP 409. Os estados do job são `running`, `done` e `error`.
 
 Imagens e jobs pertencem ao processo do servidor. Abas compartilham o mesmo estado no backend, embora cada aba mantenha suas próprias seleções no frontend. Não há isolamento de usuários nem expiração por imagem. Reiniciar o processo descarta os registros em memória.
+
+## Progresso
+
+Jobs publicam snapshots com `kind` (`upload` ou `render`), `progress` (0–100), `stage` e `status`. O recebimento do upload é contado pelos bytes lidos; depois há marcos de decodificação, conversão e miniatura. O frontend agrega o progresso dos arquivos em uma importação múltipla.
+
+O callback opcional `on_progress(label, completed, total)` em `Simulator.process`, `simulate` e `simulate_preview` acompanha o início e o fim de cada nó executado da topologia, sem alterar os modelos físicos. Os tempos continuam sendo registrados pelo callback existente. A camada web traduz os rótulos e reserva parte do percentual para preparação e exportação.
+
+Antes de importar ou renderizar, o frontend consulta `/api/health` e confere a versão do protocolo. A sessão retornada permite detectar imagens de um servidor reiniciado. O polling de upload admite até três falhas consecutivas antes de parar de consultar; a resposta do POST continua sendo a fonte de conclusão da importação.
+
+Os percentuais representam etapas, sem estimar duração. O frontend aguarda o carregamento visual do resultado antes de mostrar 100%, cancela o polling de upload ao terminar a requisição e mantém a barra em estado de erro se a operação falhar.
+
+## Estimativa de tempo
+
+`timing.py` mede as transições de etapa e mantém até cinco amostras bem-sucedidas para cada uma de até 32 configurações recentes. A assinatura considera modo, dimensões da origem, filme, papel, espaço/decodificação de entrada e ajustes que afetam grão e propagação de luz. Exposição e filtros de cor não particionam a base. A mediana dos tempos por etapa reduz a influência de execuções mais lentas.
+
+A medição para previsão começa após carregar e validar os parâmetros, antes da preparação do pipeline. O tempo decorrido inclui todo o job, inclusive importações iniciais. Sem amostras comparáveis, não há ETA numérico. Durante a execução, a previsão desconta o tempo da etapa atual e soma as etapas históricas ainda não concluídas. Etapas desconhecidas ou atrasos relevantes mudam o estado para `recalculating`.
+
+O histórico e os relógios são acessados sob o lock do servidor, não persistem em disco e não geram requisições além do polling existente. A API acrescenta `elapsed_seconds`, `remaining_seconds` e `eta_state` aos snapshots de renderização. O frontend distingue a conclusão do backend do carregamento da imagem para exibição.
 
 ## Parâmetros
 

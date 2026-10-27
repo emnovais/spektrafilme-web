@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from spektrafilm.runtime.params_schema import RuntimePhotoParams
 from spektrafilm.runtime.pipeline import SimulationPipeline
+from spektrafilm.runtime.topology import ProgressCallback
 from spektrafilm.utils.preview import resize_for_preview
 from spektrafilm.runtime.params_builder import (
     digest_params,
@@ -19,9 +20,11 @@ class Simulator:
     def __init__(self, params: RuntimePhotoParams):
         self._pipeline = SimulationPipeline(params) # should stay private
 
-    def process(self, image):
-        """Process the input image through the simulation pipeline and return the final result."""
-        return self._pipeline.process(image)
+    def process(self, image, *, on_progress: ProgressCallback | None = None):
+        """Process an image; optionally report (stage, completed, total) boundaries."""
+        if on_progress is None:
+            return self._pipeline.process(image)
+        return self._pipeline.process(image, on_progress=on_progress)
 
     def update_params(self, params):
         """Update the parameters of the simulation pipeline."""
@@ -55,15 +58,19 @@ class Simulator:
 
 def simulate(image, params: RuntimePhotoParams,
              digest_params_first: bool = True,
-             print_timings: bool = False):
+             print_timings: bool = False, *,
+             on_progress: ProgressCallback | None = None):
     """Convenience function to run the simulation pipeline with a single call.
     The simulator needs digested parameters to run. By default they are digested on the fly.
     If you already have digested parameters or want to digest them yourself, set digest_params_first=False.
+    on_progress optionally receives (stage_label, completed_stages, total_stages)
+    before and after each runtime stage; it does not estimate elapsed time.
     """
     if digest_params_first:
         params = digest_params(params)
     simulator = Simulator(params)
-    result = simulator.process(image)
+    result = (simulator.process(image) if on_progress is None
+              else simulator.process(image, on_progress=on_progress))
     if print_timings:
         simulator.print_timings()
     return result
@@ -71,15 +78,18 @@ def simulate(image, params: RuntimePhotoParams,
 
 def simulate_preview(image, params: RuntimePhotoParams,
                      digest_params_first: bool = True,
-                     print_timings: bool = False):
+                     print_timings: bool = False, *,
+                     on_progress: ProgressCallback | None = None):
     """Convenience function to run the simulation pipeline with a single call.
     The simulator needs digested parameters to run. By default they are digested on the fly.
     If you already have digested parameters or want to digest them yourself, set digest_params_first=False.
+    on_progress has the same stage-boundary contract as simulate.
     """
     max_size = params.settings.preview_max_size
+    progress_kwargs = {} if on_progress is None else {'on_progress': on_progress}
     result = simulate(resize_for_preview(image, max_size), params,
                       digest_params_first=digest_params_first,
-                      print_timings=print_timings)
+                      print_timings=print_timings, **progress_kwargs)
     return result
 
 

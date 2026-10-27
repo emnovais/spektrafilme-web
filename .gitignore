@@ -192,8 +192,19 @@ uv.lock
 .claude
 # Local operating system and editor files
 .DS_Store
+.ds_store
+._*
+.localized
 .AppleDouble
+.LSOverride
+.Spotlight-V100/
+.Trashes/
+.fseventsd/
+.TemporaryItems/
+.VolumeIcon.icns
+__MACOSX/
 Thumbs.db
+Desktop.ini
 .idea/
 *.swp
 
@@ -206,6 +217,15 @@ Thumbs.db
 *.pem
 *.key
 
+# Personal application state and local configuration overrides
+.spektrafilm/
+gui_default_state.json
+*.local.json
+*.local.toml
+*.local.yaml
+*.local.yml
+*.local.ini
+
 # Scientific runtime caches
 *.nbc
 *.nbi
@@ -213,3 +233,6 @@ Thumbs.db
 # Local image workspace
 /uploads/
 /exports/
+
+# Local diagnostic logs (including rotated files)
+/logs/

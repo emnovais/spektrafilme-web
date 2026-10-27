@@ -4,13 +4,15 @@ Interface web local, em português, para explorar simulações de fotografia ana
 
 Escolha filme e papel, ajuste exposição e cor, compare o resultado com o original e exporte a imagem pelo navegador. O processamento acontece no seu computador.
 
-**Estado:** implementação inicial. Os testes do servidor HTTP e a sintaxe do JavaScript foram verificados. A simulação completa e a interface no navegador ainda precisam de validação ponta a ponta.
+**Estado:** implementação inicial. Testes HTTP e de estado da interface passaram; upload, prévia e renderização completa foram verificados pelo servidor com uma imagem sintética. A aparência no navegador e a compatibilidade com fotografias de diferentes origens ainda precisam de validação.
 
 ## Recursos
 
 - Biblioteca pesquisável com os perfis de filmes e papéis incluídos no motor.
 - Importação de JPEG, PNG, TIFF, EXR e formatos RAW compatíveis com rawpy/LibRaw.
 - Lista de imagens da sessão, zoom e comparação antes/depois.
+- Barra de progresso com arquivo atual na importação e etapas reais na prévia/renderização.
+- Tempo decorrido e tempo restante aproximado com base em renderizações semelhantes da sessão.
 - Exposição, filtros amarelo/magenta, grão, halation e dispersão.
 - Prévia reduzida e renderização em resolução completa.
 - Exportação PNG e JPEG de 8 bits e TIFF de 16 bits em sRGB.
@@ -49,6 +51,10 @@ Encerre com `Ctrl+C` no terminal. A instalação também preserva os comandos `s
 
 A primeira simulação pode demorar por causa das compilações do Numba. Alterações nos ajustes exigem uma nova prévia ou renderização; o resultado anterior permanece disponível até ser substituído.
 
+A barra mostra o progresso por etapas: recebimento, leitura e miniatura na importação; filme, impressão, digitalização e gravação na renderização. Na importação múltipla, mostra também o arquivo atual e o total. O percentual não estima o tempo restante: uma etapa longa pode manter a barra parada até concluir. Em caso de erro, a barra mantém o progresso alcançado e exibe a falha.
+
+O tempo restante é mostrado separadamente, com base nos tempos das etapas de renderizações anteriores comparáveis. Sem histórico, aparece “Calculando estimativa”; se uma etapa exceder o previsto, aparece “Recalculando estimativa”. O histórico é reiniciado com o servidor.
+
 ### Cor e formatos
 
 | Entrada | Interpretação inicial |
@@ -69,7 +75,13 @@ O servidor escuta em `127.0.0.1` e foi feito para uma sessão local de navegador
 - Ao encerrar normalmente o servidor, os arquivos temporários são removidos. Um encerramento forçado pode deixar arquivos para limpeza manual.
 - A prévia desativa grão e alguns efeitos dispendiosos do motor. Sua exportação é PNG reduzido.
 - Renderizações completas e várias imagens grandes podem consumir muita memória e disco.
-- Não há progresso percentual, cancelamento, processamento em lote automático ou recuperação de sessão.
+- Não há cancelamento, processamento em lote automático ou recuperação de sessão.
+
+## Logs
+
+O servidor grava etapas, tempos e erros em `logs/spektrafilm-web.log` na pasta de execução e no terminal. Use `spektrafilm-web --debug` para incluir cada consulta de progresso. Consulte o [guia de diagnóstico](src/spektrafilm_web/README.md#logs-e-diagnóstico).
+
+Depois de atualizar o código Python, reinicie o servidor, atualize a página e reabra as fotos. A interface verifica a compatibilidade do backend para evitar consultas de progresso contra uma versão antiga.
 
 ## Documentação
 
@@ -88,6 +100,7 @@ Estes testes não exigem instalar as dependências científicas:
 ```sh
 PYTHONPATH=src python3.13 -m unittest discover -s tests/web -v
 node --check src/spektrafilm_web/static/app.js
+node --test tests/web_js/progress.test.cjs
 ```
 
 No PowerShell, configure `$env:PYTHONPATH = 'src'` e execute `python -m unittest discover -s tests/web -v`.

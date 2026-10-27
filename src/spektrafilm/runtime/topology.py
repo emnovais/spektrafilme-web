@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any, Callable
 
+ProgressCallback = Callable[[str, int, int], None]
+
 
 class Tap:
     """Canonical tap names for the spektrafilm pipeline.
@@ -63,6 +65,7 @@ def run_topology(
     image: Any,
     *,
     on_fire: Callable[[Node, float], None] | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> Any:
     """Walk ``topology`` in declared order, firing every node whose reads
     are satisfied. Stops as soon as ``collect`` is in state and returns it.
@@ -70,15 +73,33 @@ def run_topology(
     ``on_fire`` is invoked as ``on_fire(node, elapsed_seconds)`` after each
     node fires; the dispatcher in :class:`SimulationPipeline` uses it to
     record per-node timings.
+
+    ``on_progress(label, completed, total)`` runs before and after each
+    executable node. Counts describe stages, not elapsed time or pixels.
     """
+    total = 0
+    if on_progress is not None:
+        available = {inject}
+        for node in topology:
+            if all(k in available for k in node.reads):
+                total += 1
+                available.update(node.writes)
+                if collect in available:
+                    break
+    completed = 0
     state: dict[str, Any] = {inject: image}
     for node in topology:
         if all(k in state for k in node.reads):
+            if on_progress is not None:
+                on_progress(node.label, completed, total)
             t0 = perf_counter()
             node.fire(state)
             elapsed = perf_counter() - t0
             if on_fire is not None:
                 on_fire(node, elapsed)
+            completed += 1
+            if on_progress is not None:
+                on_progress(node.label, completed, total)
             if collect in state:
                 return state[collect]
     raise RuntimeError(

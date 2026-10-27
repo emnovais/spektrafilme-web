@@ -8,11 +8,19 @@ Respostas estruturadas usam JSON. Erros retornam `{"error": "mensagem"}`. Arquiv
 
 | Método | Rota | Função |
 | --- | --- | --- |
+| GET | `/api/health` | Versão do protocolo e identificador da sessão |
+| POST | `/api/client-error` | Registra mensagem de erro do frontend |
 | GET | `/api/profiles` | Lista informações dos perfis incluídos |
 | POST | `/api/upload` | Importa uma imagem |
 | POST | `/api/render` | Agenda uma simulação |
 | GET | `/api/jobs/{id}` | Consulta o estado de um job |
 | GET | `/media/{arquivo}` | Obtém uma imagem gerada na sessão |
+
+### Compatibilidade e diagnóstico
+
+`GET /api/health` retorna `{"api_version": 1, "session": "<server-session-id>"}`. O frontend verifica a compatibilidade antes de enviar imagens ou iniciar simulações. `session` muda a cada inicialização do servidor.
+
+`POST /api/client-error` aceita JSON com `context`, `message` e `stack`, registra o diagnóstico no log e retorna `{"ok": true}`. Limite do corpo: 16 KiB. A rota não executa comandos nem devolve os logs. Como nas demais rotas POST, somente origens locais permitidas são aceitas.
 
 ### Perfis
 
@@ -43,6 +51,12 @@ Resposta HTTP 200, com IDs e dimensões dependentes do arquivo:
 ```
 
 Extensões aceitas: `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`, `.exr`, `.nef`, `.cr2`, `.cr3`, `.arw`, `.dng`, `.raf`, `.rw2`, `.orf`. A leitura RAW depende do suporte da biblioteca para o arquivo específico. Limite: 268435456 bytes por requisição.
+
+### Progresso de upload
+
+Opcionalmente, envie `X-Upload-ID` com um UUID novo em formato hexadecimal, por exemplo o valor gerado por `crypto.randomUUID().replaceAll("-", "")`. O servidor registra um job `kind: "upload"` antes de ler o corpo da requisição. Consulte `/api/jobs/{uuid-hex}` enquanto o POST está em andamento: haverá `status`, `progress` e `stage`, desde o recebimento dos bytes até a miniatura. Um ID repetido é rejeitado sem modificar o job existente.
+
+A consulta pode retornar 404 antes de o POST chegar ao servidor. A resposta final de upload continua sendo o objeto da imagem e clientes sem o cabeçalho mantêm o comportamento anterior.
 
 ### Simulação
 
@@ -85,7 +99,13 @@ Use booleanos JSON reais nos campos booleanos. O servidor rejeita valores numér
 
 ### Consulta do job
 
-Durante o processamento: `{"status": "running"}`.
+Durante o processamento, o job retorna também percentual por etapas e status descritivo:
+
+```json
+{"kind": "render", "status": "running", "progress": 35, "stage": "Revelando o filme e aplicando textura"}
+```
+
+`progress` vai de 0 a 100 e não estima tempo restante. Na conclusão, `progress` é 100. Em falhas, o último percentual é preservado.
 
 Quando concluído, HTTP 200:
 
@@ -103,6 +123,32 @@ Quando concluído, HTTP 200:
 ```
 
 Prévias retornam `preview: true` e somente `exports.png`. Falhas retornam HTTP 200 com `{"status": "error", "error": "mensagem"}`. Um job inexistente retorna HTTP 404.
+
+### Tempos e estimativa de renderização
+
+A consulta de um job de renderização inclui:
+
+| Campo | Significado |
+| --- | --- |
+| `elapsed_seconds` | Segundos desde o início do job; congelado na conclusão ou falha |
+| `remaining_seconds` | Segundos restantes aproximados, `null` sem base confiável; zero apenas na conclusão |
+| `eta_state` | `learning`, `estimated`, `recalculating`, `done` ou `error` |
+
+Exemplo durante uma etapa com histórico:
+
+```json
+{
+  "kind": "render",
+  "status": "running",
+  "progress": 35,
+  "stage": "Revelando o filme e aplicando textura",
+  "elapsed_seconds": 42.1,
+  "remaining_seconds": 67.5,
+  "eta_state": "estimated"
+}
+```
+
+A estimativa é independente do percentual de etapas. O servidor mede os tempos de preparação, nós do pipeline e exportações. Apenas jobs concluídos com sucesso entram no histórico da sessão. A comparação exige dimensões e configurações compatíveis; não há extrapolação de prévia para resolução completa. Durante carregamentos iniciais, configurações inéditas ou atrasos significativos, `remaining_seconds` será `null`.
 
 ### Códigos de erro
 

@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 from spektrafilm_web.server import LocalServer, number
 
 
-class WebTests(unittest.TestCase):
+class HTTPTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
@@ -25,6 +25,8 @@ class WebTests(unittest.TestCase):
         cls.thread.join()
         cls.temp.cleanup()
 
+
+class WebTests(HTTPTestCase):
     def test_static_and_profiles(self):
         for path in ('/', '/app.js', '/style.css'):
             with urlopen(self.url + path) as response:

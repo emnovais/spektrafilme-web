@@ -23,6 +23,8 @@ jobs:
           PYTHONPATH: src
         run: python -m unittest discover -s tests/web -v
       - name: Check Python syntax
-        run: python -m compileall -q src/spektrafilm_web
+        run: python -m compileall -q src/spektrafilm_web src/spektrafilm/runtime
       - name: Check JavaScript syntax
         run: node --check src/spektrafilm_web/static/app.js
+      - name: Test progress UI state
+        run: node --test tests/web_js/progress.test.cjs
